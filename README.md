@@ -11,7 +11,7 @@ A simple, elegant web UI for interacting with an AI-powered chatbot. This projec
 - **Easy Integration**: Connects to any backend responding at `/api/chat`. 
 - **Error Handling**: Gracefully reports API/network errors.  
 - **Lightweight**: All logic and styling in a single HTML file. 
- 
+    
 ---
 
 ## 🛠️ Getting Started 
