@@ -6,7 +6,7 @@ A simple, elegant web UI for interacting with an AI-powered chatbot. This projec
                   
 ## 🚀 Features
      
-- **Modern Chat UI**: Clean, mobile-friendly design with clear user/bot message distinction   
+- **Modern Chat UI**: Clean, mobile-friendly design with clear user/bot message distinction 
 - **Async Messaging**: Uses `fetch` API for smooth, real-time communication  
 - **Easy Integration**: Connects to any backend responding at `/api/chat`. 
 - **Error Handling**: Gracefully reports API/network errors.  
