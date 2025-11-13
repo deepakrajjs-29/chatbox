@@ -10,7 +10,7 @@ A simple, elegant web UI for interacting with an AI-powered chatbot. This projec
 - **Async Messaging**: Uses `fetch` API for smooth, real-time communication  
 - **Easy Integration**: Connects to any backend responding at `/api/chat`. 
 - **Error Handling**: Gracefully reports API/network errors.  
-- **Lightweight**: All logic and styling in a single HTML file. 
+- **Lightweight**: All logic and styling in a single HTML file.
     
 ---
 
