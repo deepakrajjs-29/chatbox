@@ -1,13 +1,21 @@
-import { Repository } from "../../types";
-import { 
-  FileCode2, 
-  Layers, 
-  GitCommit, 
-  ShieldAlert, 
-  Cpu, 
-  Box, 
+import { useState, useEffect } from "react";
+import { Repository, RepositoryInsights } from "../../types";
+import { backendService } from "../../services/backend";
+import {
+  BarChart3,
+  FileCode2,
+  GitCommit,
+  ShieldAlert,
   Binary,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Shield,
+  MessageSquare,
+  Orbit,
+  Activity
 } from "lucide-react";
 
 interface OverviewViewProps {
@@ -15,181 +23,292 @@ interface OverviewViewProps {
   onViewChange: (view: string) => void;
 }
 
+function HealthScoreRing({ score }: { score: number }) {
+  const color = score >= 90 ? "#22C55E" : score >= 75 ? "#4F8CFF" : score >= 55 ? "#F59E0B" : "#EF4444";
+  const label = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 55 ? "Fair" : "Needs Work";
+  const circumference = 2 * Math.PI * 38;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative h-28 w-28">
+        <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+          <circle
+            cx="50" cy="50" r="38"
+            fill="none"
+            stroke={color}
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            style={{ transition: "stroke-dashoffset 1.2s ease-out, stroke 0.5s ease" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-extrabold text-white leading-none">{score}</span>
+          <span className="text-[9px] text-gray-500 font-semibold">/100</span>
+        </div>
+      </div>
+      <span className="text-xs font-bold mt-2" style={{ color }}>{label}</span>
+      <span className="text-[10px] text-gray-500 font-medium">Codebase Health</span>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  color = "text-primary",
+  trend,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: any;
+  color?: string;
+  trend?: "up" | "down" | "neutral";
+}) {
+  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+  const trendColor = trend === "up" ? "text-success" : trend === "down" ? "text-danger" : "text-gray-500";
+
+  return (
+    <div className="glass-panel p-4 rounded-2xl border border-white/5 bg-white/[0.01] hover:border-white/10 hover:bg-white/[0.02] transition-all group">
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{label}</span>
+        <div className={`p-1.5 rounded-lg bg-white/5 border border-white/5 group-hover:border-white/10 transition-colors`}>
+          <Icon className={`h-3.5 w-3.5 ${color}`} />
+        </div>
+      </div>
+      <div className="flex items-end justify-between">
+        <span className="text-xl font-extrabold text-white leading-none">{value}</span>
+        {trend && <TrendIcon className={`h-3.5 w-3.5 ${trendColor} mb-0.5`} />}
+      </div>
+      {sub && <p className="text-[10px] text-gray-500 mt-1.5 font-medium">{sub}</p>}
+    </div>
+  );
+}
+
 export function OverviewView({ repo, onViewChange }: OverviewViewProps) {
+  const [insights, setInsights] = useState<RepositoryInsights | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadInsights() {
+      setLoading(true);
+      try {
+        const data = await backendService.getRepositoryInsights(repo.path);
+        setInsights(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInsights();
+  }, [repo]);
+
   const formatSize = (bytes: number) => {
     const kb = bytes / 1024;
     if (kb < 1024) return `${kb.toFixed(1)} KB`;
     return `${(kb / 1024).toFixed(1)} MB`;
   };
 
+  // Compute health score from insights
+  const healthScore = insights
+    ? Math.round(insights.health_scores.reduce((s, h) => s + h.score, 0) / insights.health_scores.length)
+    : null;
+
+  const securityCount = insights?.security_findings.length ?? 0;
+  const criticalCount = insights?.security_findings.filter(f => f.severity === "HIGH").length ?? 0;
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Welcome Title */}
+
+      {/* Title */}
       <div>
-        <h2 className="text-xl font-bold text-white tracking-tight">Codebase Intelligence Lens</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          Codebase Intelligence
+        </h2>
         <p className="text-xs text-gray-400 mt-1">
-          Complete static analysis and structural mappings for <span className="font-semibold text-primary">{repo.name}</span>.
+          Complete static analysis for <span className="font-semibold text-primary">{repo.name}</span> on branch{" "}
+          <span className="font-mono text-success">{repo.branch}</span>
         </p>
       </div>
 
-      {/* Grid of Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-panel p-4.5 rounded-2xl border border-white/5 bg-white/[0.01]">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Repository Size</span>
-            <Binary className="h-4 w-4 text-primary" />
-          </div>
-          <h3 className="text-lg font-bold text-white">{formatSize(repo.sizeBytes)}</h3>
-          <p className="text-[9px] text-gray-400 mt-1">Parsed in 1.8 seconds</p>
+      {/* Health Score + Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-start">
+
+        {/* Health Score Card */}
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex flex-col items-center justify-center md:col-span-1">
+          {loading ? (
+            <div className="h-28 flex items-center justify-center">
+              <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
+          ) : healthScore !== null ? (
+            <HealthScoreRing score={healthScore} />
+          ) : (
+            <div className="text-xs text-gray-500">Unavailable</div>
+          )}
         </div>
 
-        <div className="glass-panel p-4.5 rounded-2xl border border-white/5 bg-white/[0.01]">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Files / Folders</span>
-            <FileCode2 className="h-4 w-4 text-accent" />
-          </div>
-          <h3 className="text-lg font-bold text-white">{repo.fileCount} / {repo.foldersCount}</h3>
-          <p className="text-[9px] text-gray-400 mt-1">Excludes ignored directories</p>
-        </div>
-
-        <div className="glass-panel p-4.5 rounded-2xl border border-white/5 bg-white/[0.01]">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Commit Count</span>
-            <GitCommit className="h-4 w-4 text-success" />
-          </div>
-          <h3 className="text-lg font-bold text-white">{repo.commitCount}</h3>
-          <p className="text-[9px] text-gray-400 mt-1">Active branch: <span className="font-semibold font-mono text-success">{repo.branch}</span></p>
-        </div>
-
-        <div className="glass-panel p-4.5 rounded-2xl border border-white/5 bg-white/[0.01]">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Security Risks</span>
-            <ShieldAlert className="h-4 w-4 text-danger" />
-          </div>
-          <h3 className="text-lg font-bold text-white">2 Secrets</h3>
-          <p className="text-[9px] text-danger/80 mt-1">Immediate review required</p>
+        {/* Stat Cards Grid */}
+        <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard
+            label="Repository Size"
+            value={formatSize(repo.sizeBytes)}
+            sub="Parsed in < 2s"
+            icon={Binary}
+            color="text-primary"
+          />
+          <StatCard
+            label="Files / Folders"
+            value={`${repo.fileCount} / ${repo.foldersCount}`}
+            sub="Excl. ignored dirs"
+            icon={FileCode2}
+            color="text-accent"
+          />
+          <StatCard
+            label="Commits"
+            value={repo.commitCount}
+            sub={`Branch: ${repo.branch}`}
+            icon={GitCommit}
+            color="text-success"
+            trend="up"
+          />
+          <StatCard
+            label="Security"
+            value={securityCount > 0 ? `${securityCount} Issues` : "Clean"}
+            sub={criticalCount > 0 ? `${criticalCount} critical` : "No critical findings"}
+            icon={ShieldAlert}
+            color={securityCount > 0 ? "text-danger" : "text-success"}
+            trend={securityCount > 0 ? "down" : "up"}
+          />
         </div>
       </div>
+
+      {/* Health Breakdown (from insights) */}
+      {!loading && insights && (
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <Activity className="h-4 w-4 text-primary" />
+              Health Dimensions
+            </h3>
+            <button
+              onClick={() => onViewChange("insights")}
+              className="text-[10px] text-primary hover:text-primary/80 font-semibold flex items-center gap-1 transition-colors"
+            >
+              Full Report <ArrowRight className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {insights.health_scores.map((item) => (
+              <div key={item.category} className="space-y-1.5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-gray-400 font-medium truncate max-w-[120px]">{item.category}</span>
+                  <span className={`font-bold tabular-nums ${
+                    item.score >= 90 ? "text-success" : item.score >= 70 ? "text-primary" : "text-danger"
+                  }`}>{item.score}</span>
+                </div>
+                <div className="h-1 w-full rounded-full bg-white/5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${
+                      item.score >= 90 ? "bg-success" : item.score >= 70 ? "bg-primary" : "bg-danger"
+                    }`}
+                    style={{ width: `${item.score}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Language Breakdown */}
       <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] space-y-3">
-        <h4 className="text-xs font-semibold text-gray-400">Language Breakdown</h4>
-        
-        {/* Horizontal Progress bar segments */}
-        <div className="h-2.5 w-full rounded-full bg-neutral-900 overflow-hidden flex">
+        <h4 className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+          <Binary className="h-3.5 w-3.5" />
+          Language Breakdown
+        </h4>
+        <div className="h-2.5 w-full rounded-full bg-neutral-900 overflow-hidden flex gap-px">
           {repo.languages.map((lang) => (
-            <div 
-              key={lang.name} 
-              className="h-full first:rounded-l-full last:rounded-r-full"
-              style={{ 
-                width: `${lang.percentage}%`,
-                backgroundColor: lang.color
-              }}
+            <div
+              key={lang.name}
+              className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-700"
+              style={{ width: `${lang.percentage}%`, backgroundColor: lang.color }}
               title={`${lang.name}: ${lang.percentage}%`}
-            ></div>
+            />
           ))}
         </div>
-        
-        {/* Color Legend dots */}
-        <div className="flex flex-wrap gap-x-5 gap-y-2 mt-2">
+        <div className="flex flex-wrap gap-x-5 gap-y-1.5">
           {repo.languages.map((lang) => (
             <div key={lang.name} className="flex items-center gap-1.5 text-xs text-gray-300">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: lang.color }}></span>
-              <span>{lang.name}</span>
-              <span className="text-gray-500 font-semibold">{lang.percentage.toFixed(1)}%</span>
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: lang.color }} />
+              <span className="font-medium">{lang.name}</span>
+              <span className="text-gray-500 font-semibold tabular-nums">{lang.percentage.toFixed(1)}%</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Row details: Frameworks & Architecture Style */}
+      {/* Frameworks + Architecture */}
       <div className="grid md:grid-cols-2 gap-4">
-        
-        {/* Card: Architectural Detection */}
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Layers className="h-4.5 w-4.5 text-primary" />
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Architectural Pattern</h4>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-1.5">
-              {repo.architectureStyle || "Layered Components"}
-            </h3>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              DevLens detected structured imports organizing files into specific layout, controllers, and services tiers. Click to explore the layout graph.
+        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] space-y-3">
+          <h4 className="text-xs font-bold text-gray-400">Detected Frameworks</h4>
+          <div className="flex flex-wrap gap-2">
+            {repo.frameworks.map((fw) => (
+              <span
+                key={fw}
+                className="px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary"
+              >
+                {fw}
+              </span>
+            ))}
+          </div>
+          {repo.packageManager && (
+            <p className="text-[10px] text-gray-500">
+              Package manager: <span className="text-gray-300 font-semibold">{repo.packageManager}</span>
+              {repo.buildTool && <> · Build: <span className="text-gray-300 font-semibold">{repo.buildTool}</span></>}
+            </p>
+          )}
+        </div>
+
+        {repo.architectureStyle && (
+          <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] space-y-2">
+            <h4 className="text-xs font-bold text-gray-400">Architecture Pattern</h4>
+            <p className="text-sm font-bold text-white">{repo.architectureStyle}</p>
+            <p className="text-[10px] text-gray-500 leading-relaxed">
+              Detected from folder structure, import chains, and module boundaries.
             </p>
           </div>
-          
-          <button 
-            onClick={() => onViewChange("architecture")}
-            className="w-fit flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-white transition-colors mt-4 active:translate-x-0.5"
-          >
-            Open Architecture Canvas
-            <ArrowRight className="h-3 w-3" />
-          </button>
-        </div>
-
-        {/* Card: Tech Stack Properties */}
-        <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Box className="h-4.5 w-4.5 text-accent" />
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Framework & Dependencies</h4>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 mb-3">
-              {repo.frameworks.map((fw) => (
-                <span key={fw} className="px-2.5 py-1 rounded-md bg-accent/10 border border-accent/20 text-[10px] text-accent font-semibold">
-                  {fw}
-                </span>
-              ))}
-              {repo.packageManager && (
-                <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-gray-300 font-semibold font-mono">
-                  pkg: {repo.packageManager}
-                </span>
-              )}
-              {repo.buildTool && (
-                <span className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] text-gray-300 font-semibold font-mono">
-                  tool: {repo.buildTool}
-                </span>
-              )}
-            </div>
-
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Codebase initialized with `{repo.packageManager}`. Scanned import headers detect {repo.frameworks.join(", ")} decorators.
-            </p>
-          </div>
-
-          <button 
-            onClick={() => onViewChange("dependencies")}
-            className="w-fit flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-white transition-colors mt-4 active:translate-x-0.5"
-          >
-            Inspect Dependency Relations
-            <ArrowRight className="h-3 w-3" />
-          </button>
-        </div>
-
+        )}
       </div>
 
-      {/* Row: Quick AI Helper actions */}
-      <div className="glass-panel p-5 rounded-2xl border border-white/5 bg-white/[0.01] flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-accent/10 text-accent flex items-center justify-center border border-accent/25 shrink-0">
-            <Cpu className="h-4.5 w-4.5 animate-pulse" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-white">Ask local DevLens AI Chat</h4>
-            <p className="text-[10px] text-gray-400">Query file relations or onboarding paths locally using Qwen2.5-Coder LLM.</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => onViewChange("chat")}
-          className="px-4 py-1.5 bg-accent hover:bg-accent/95 rounded-xl text-xs font-semibold text-white transition-all shadow-lg shadow-accent/20 active:scale-[0.98]"
-        >
-          Start Chat Session
-        </button>
+      {/* Quick Action Shortcuts */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { icon: Orbit, label: "Code Universe", sub: "Visual graph", view: "universe", color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+          { icon: Shield, label: "Security Scan", sub: `${securityCount} findings`, view: "security", color: "text-danger", bg: "bg-danger/10 border-danger/20" },
+          { icon: MessageSquare, label: "Ask AI", sub: "Chat about codebase", view: "chat", color: "text-accent", bg: "bg-accent/10 border-accent/20" },
+          { icon: Sparkles, label: "AI Insights", sub: "Health report", view: "insights", color: "text-success", bg: "bg-success/10 border-success/20" },
+        ].map(({ icon: Icon, label, sub, view, color, bg }) => (
+          <button
+            key={view}
+            onClick={() => onViewChange(view)}
+            className={`glass-panel p-4 rounded-2xl border bg-white/[0.01] hover:bg-white/[0.03] transition-all text-left group active:scale-[0.98] ${bg}`}
+          >
+            <div className={`p-2 rounded-xl ${bg} w-fit mb-3 border`}>
+              <Icon className={`h-4 w-4 ${color}`} />
+            </div>
+            <div className="text-xs font-bold text-white group-hover:text-white/90 transition-colors">{label}</div>
+            <div className="text-[10px] text-gray-500 mt-0.5">{sub}</div>
+          </button>
+        ))}
       </div>
-
     </div>
   );
 }

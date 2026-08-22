@@ -15,6 +15,7 @@ import { InsightsView } from "./dashboard/InsightsView";
 import { GitView } from "./dashboard/GitView";
 import { CodeUniverseView } from "./dashboard/CodeUniverseView";
 import { PerformanceView } from "./dashboard/PerformanceView";
+import { ReportView } from "./dashboard/ReportView";
 
 interface DashboardProps {
   repo: Repository;
@@ -29,7 +30,6 @@ export function Dashboard({ repo, onCloseRepo, onSearchTrigger, activeView: prop
   const activeView = propsActiveView || localActiveView;
   const setActiveView = propsOnViewChange || setLocalActiveView;
 
-  // Router matching content views
   const renderViewContent = () => {
     switch (activeView) {
       case "overview":
@@ -51,11 +51,13 @@ export function Dashboard({ repo, onCloseRepo, onSearchTrigger, activeView: prop
       case "hotspots":
         return <HotspotsView repo={repo} />;
       case "security":
-        return <SecurityView repo={repo} />;
+        return <SecurityView repo={repo} onViewChange={setActiveView} />;
       case "chat":
-        return <ChatView repo={repo} />;
+        return <ChatView repo={repo} onViewChange={setActiveView} />;
       case "performance":
         return <PerformanceView repo={repo} />;
+      case "report":
+        return <ReportView repo={repo} onViewChange={setActiveView} />;
       case "settings":
         return <SettingsView repo={repo} />;
       default:
@@ -65,29 +67,30 @@ export function Dashboard({ repo, onCloseRepo, onSearchTrigger, activeView: prop
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0A0A0A] text-white">
-      
+
       {/* Sidebar Navigation */}
-      <Sidebar 
-        activeView={activeView} 
-        onViewChange={setActiveView} 
-        repoName={repo.name} 
+      <Sidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        repoName={repo.name}
         repoPath={repo.path}
-        onCloseRepo={onCloseRepo} 
+        onCloseRepo={onCloseRepo}
       />
 
       {/* Main Body */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
-        
+
         {/* Header */}
-        <Header 
-          repoName={repo.name} 
-          repoPath={repo.path} 
-          branchName={repo.branch} 
+        <Header
+          repoName={repo.name}
+          repoPath={repo.path}
+          branchName={repo.branch}
           onSearchTrigger={onSearchTrigger}
+          onReportTrigger={() => setActiveView("report")}
         />
 
         {/* Dynamic View Scroll Panel */}
-        <main className="flex-1 overflow-y-auto p-6 bg-[#0A0A0A]">
+        <main className="flex-1 overflow-y-auto p-6 bg-[#0A0A0A] min-h-0">
           <div className="max-w-7xl mx-auto h-full">
             {renderViewContent()}
           </div>

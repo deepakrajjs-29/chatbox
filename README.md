@@ -1,95 +1,158 @@
 # DevLens AI
 
-> **"Understand Any Codebase. Entirely On Your Machine."**
+<div align="center">
 
-DevLens AI is a production-grade, 100% local, privacy-first repository intelligence desktop application built to analyze complex software systems entirely offline. By combining static AST code parsers with local vector embeddings databases, DevLens allows developers to semantically query, visualize, and discuss any project workspace without leaving their computer.
+![DevLens AI Banner](https://raw.githubusercontent.com/deepakrajjs-29/DevLens-AI/main/public/banner.png)
+
+### **"Understand Any Codebase. Entirely On Your Machine."**
+
+[![Tauri v2](https://img.shields.io/badge/Tauri-v2-blue?logo=tauri&logoColor=white)](https://tauri.app/)
+[![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Rust](https://img.shields.io/badge/Rust-Stable-black?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Local AI](https://img.shields.io/badge/Local_AI-Ollama_%2F_Qwen2.5-purple?logo=ollama&logoColor=white)](https://ollama.ai/)
+[![Privacy First](https://img.shields.io/badge/Privacy-100%25_On--Device-success)](https://github.com/deepakrajjs-29/DevLens-AI)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Software Innovation Challenge II Competition Entry**
+
+[Key Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Competition Report](./COMPETITION_REPORT.md) • [Documentation](./DOCUMENTATION.md)
+
+</div>
 
 ---
 
-## Key Core Capabilities
+## 🌟 What is DevLens AI?
 
-1. 🌌 **Code Universe**: Visualizes codebase structures as interactive Galaxy graphs, execution paths, and proportional folder heatmaps.
-2. 🔍 **Local Semantic Search**: Calculates hybrid lexical-semantic vectors using localized Nomic models to find matching code snippets inside a 50ms latency window.
-3. 🧠 **Offline RAG Chat**: Discusses architecture rules and codebase files contents using local LLMs (Ollama/Qwen2.5-Coder).
-4. 📈 **AI Engineering Insights**: Computes metrics for cyclomatic complexity and scans directories for credentials leaks.
-5. 🌿 **Git History Analysis**: Parses commit logs to build authorship distributions and predict file modification downstream risks.
-6. 📊 **Performance & Resource Monitor**: Benchmarks system memory footprints, CPU thread counts, and total database vectors.
+**DevLens AI** is a production-grade, privacy-first, 100% local repository intelligence desktop application. It transforms complex software repositories into interactive visual graphs, semantic search indexes, and AI-conversational workspaces — **with zero source code leaving your device**.
+
+### The Core Problem It Solves
+When developers join a new team, onboard into an unfamiliar codebase, or audit legacy software, understanding hundreds of files and hidden dependencies takes days or weeks. Sending proprietary code to cloud AI services introduces major security and intellectual property risks. 
+
+**DevLens AI eliminates this trade-off**: everything from AST parsing, vector embeddings (384-dim polynomial hashing), security scanning, dependency cycle detection, to local LLM chat runs on your local workstation.
 
 ---
 
-## Architectural Workflow
+## 🚀 Key Features
 
-```mermaid
-graph TD
-    A[Scanned AST & Code Graph] --> B[Local Indexing Engine]
-    B --> C[Nomic Embeddings Generator]
-    C --> D[LanceDB Vector Store]
-    D --> E[Local LLM RAG Chat]
-    E --> F[Interactive Dashboard UI]
+| Capability | Description |
+|---|---|
+| 🌌 **Code Universe 2.0** | Interactive force-directed topology graph built with `@xyflow/react`. Features risk-based node color coding (Red = High Risk, Amber = Medium, Green = Healthy), animated edges for critical connections, real-time node filtering, and a deep node inspection side-panel. |
+| 🔍 **Local Semantic Search** | ⌘K command palette with hybrid lexical-vector search. Finds code by describing what it does rather than exact keyword names. |
+| 💬 **Offline RAG Chat 2.0** | Conversational AI architect with real-time token streaming, rich Markdown rendering (bold, tables, syntax-highlighted code blocks), Ollama connectivity status detection, and clickable source file citation chips. |
+| 🛡️ **Security Intelligence 2.0** | Unified Static Application Security Testing (SAST) dashboard with `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO` severity breakdowns, masked credentials previews, and actionable remediation recommendations. |
+| ❤️ **Codebase Health Score Ring** | Quantified 0–100 codebase health score computed across 6 dimensions (Code Quality, Maintainability, Security, Performance, Test Coverage, Documentation) with animated SVG indicators. |
+| 📄 **One-Click Codebase Report Generator** | Instant comprehensive Markdown engineering report generation detailing executive summaries, health metrics, security findings, and AI refactoring roadmaps with one-click copy and `.md` file download. |
+| 🌿 **Git Intelligence & Bus-Factor** | Historical commit velocity, file churn analysis, contributor ownership distributions, and knowledge-silo risk identification. |
+| 🕸️ **Dependency Graph & Circular Detector** | Interactive import dependency graphs with automated DFS-based circular dependency loop detection. |
+| 🗺️ **Learning Roadmap** | AI-curated step-by-step onboarding sequences guiding developers through core domain modules. |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                      DEVELOPER'S MACHINE                          │
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │                    DEVLENS AI APPLICATION                    │  │
+│  │                                                               │  │
+│  │  ┌─────────────────────────────────────────────────────┐    │  │
+│  │  │              REACT + TYPESCRIPT FRONTEND             │    │  │
+│  │  │  Overview · Code Universe · AI Chat · Security      │    │  │
+│  │  │  Git · Dependencies · Explorer · Reports · Insights  │    │  │
+│  │  │  @xyflow/react · Framer Motion · Lucide Icons        │    │  │
+│  │  └──────────────────┬──────────────────────────────────┘    │  │
+│  │                     │ Tauri v2 IPC Bridge                   │  │
+│  │  ┌──────────────────▼──────────────────────────────────┐    │  │
+│  │  │              RUST BACKEND (Tauri v2)               │    │  │
+│  │  │                                                     │    │  │
+│  │  │  analyzer.rs     → AST parsing & complexity scoring │    │  │
+│  │  │  git_analyzer.rs → Commit velocity & author risk    │    │  │
+│  │  │  insights.rs     → Health score & SAST aggregation  │    │  │
+│  │  │  universe.rs     → Graph topology & DFS cycles      │    │  │
+│  │  │  indexer.ts      → 384-dim polynomial hash vectors  │    │  │
+│  │  └──────────────────┬──────────────────────────────────┘    │  │
+│  │                     │ Localhost HTTP                        │  │
+│  │  ┌──────────────────▼──────────────────────────────────┐    │  │
+│  │  │      OLLAMA LOCAL LLM ENGINE (Optional)             │    │  │
+│  │  │      Model: Qwen2.5-Coder 3B (http://localhost:11434)│   │  │
+│  │  └─────────────────────────────────────────────────────┘    │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │              LOCAL REPOSITORY (User's Code)                  │  │
+│  │  /path/to/project ← Never transmitted over the network      │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-- **Static Analyzer**: Scrapes classes, functions, and import chains using Tree-sitter parsers.
-- **Local Vectors Database**: Encodes code chunks into 384-dimension embeddings, caching indexes locally.
-- **IPC bridge**: Tauri v2 commands bridge Rust processing threads with the Vite + React frontend dashboard.
+---
+
+## 🔒 Privacy & Security Guarantee
+
+1. **Zero Cloud Exfiltration**: No telemetry, no analytics beacons, and no external AI API calls.
+2. **Local Vector Embeddings**: Embeddings are computed and stored directly on your machine.
+3. **Local LLM Execution**: Runs via Ollama on localhost (`11434`). If Ollama is offline, DevLens AI seamlessly falls back to its built-in heuristic reasoning engine.
 
 ---
 
-## Getting Started (Quick Setup)
+## ⚡ Quick Start
 
 ### Prerequisites
-- Node.js (v18+)
-- Rust (Cargo)
-- Ollama (Optional, for Local AI Chat)
+- [Node.js](https://nodejs.org/) (v18+)
+- [Rust & Cargo](https://rustup.rs/) (stable toolchain)
+- [Ollama](https://ollama.ai/) *(Optional, for local AI chat)*
 
-### 1. Install & Build Frontend
+### 1. Clone & Install
 ```bash
-# Install packages
+git clone https://github.com/deepakrajjs-29/DevLens-AI.git
+cd DevLens-AI
 npm install
-
-# Run Vite dev preview
-npm run dev
-
-# Compile production bundle
-npm run build
 ```
 
-### 2. Configure Local LLM Models (Ollama)
-Download and start Ollama on your machine:
+### 2. Run Web Development Server (Preview Mode)
 ```bash
-# Pull recommended code model
-ollama pull qwen2.5-coder:3b
+npm run dev
+```
+Open [http://localhost:1420](http://localhost:1420) in your browser.
 
-# Run local chat engine
+### 3. Run Desktop Application (Full Tauri Mode)
+```bash
+npm run tauri dev
+```
+
+### 4. Setup Local AI Model (Optional)
+```bash
+# Pull and start recommended local model
 ollama run qwen2.5-coder:3b
 ```
-Ensure Ollama server runs on the default port `11434`. DevLens will automatically detect the endpoint and route AI Architect queries.
 
 ---
 
-## Ignored Files & Directories
-Ignored patterns are managed in the **Settings** panel. By default:
-`node_modules, .git, dist, build, .devlens, .vscode`
+## 📊 Comprehensive Competition Resources
+
+For judges and evaluators of the **Software Innovation Challenge II**:
+- 📑 **[Complete Competition Project Report (39 Sections)](./COMPETITION_REPORT.md)**: Full architecture breakdown, 25 judge Q&As, 3-minute demo script, 15-slide PPT blueprint, and evaluation criteria mapping.
+- 📖 **[System Documentation](./DOCUMENTATION.md)**: Technical specifications, data models, IPC command references, and performance considerations.
 
 ---
 
-## Technical Specifications
-- **Client Bundle**: React + TypeScript + TailwindCSS v4.
-- **Backend Service**: Rust Tauri v2 core framework.
-- **Static Analyzer**: AST Tree-sitter parsers.
-- **Local Indexing**: Offline hashing projections.
-- **Private Data Protection**: 100% offline, zero remote API connections, zero analytics tracking.
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 18, TypeScript, Tailwind CSS v4, Framer Motion |
+| **Visualizations** | `@xyflow/react` (React Flow v12), HTML5 Canvas, SVG |
+| **Desktop Runtime** | Tauri v2 (Rust Core) |
+| **Backend & Parsers**| Rust, Regex/AST Heuristics, System Git CLI |
+| **Local Embeddings** | 384-Dimensional Polynomial Hashing Vector Pipeline |
+| **Local LLM Engine** | Ollama (`qwen2.5-coder:3b`), Streaming API |
+| **Icons & Bundler**  | Lucide React, Vite 7 |
 
 ---
 
-## FAQ
-
-**Q: Does any code leave my machine?**  
-A: No. DevLens AI functions entirely locally. All parser scans, vectors indexes, and LLM reasoning steps run on your local hardware.
-
-**Q: Can I run this without Ollama?**  
-A: Yes. All search metrics, galaxy flow diagrams, and SAST scanner panels compile and work using local TS fallback engines.
-
----
-
-## License
-Distributed under the Open Source MIT License.
+## 📄 License
+This project is open source and available under the [MIT License](LICENSE).

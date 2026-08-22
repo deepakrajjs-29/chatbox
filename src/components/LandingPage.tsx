@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   FolderOpen, 
@@ -8,7 +8,10 @@ import {
   Terminal, 
   Cpu, 
   Sparkles,
-  Database
+  Database,
+  Lock,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import { RecentRepo } from "../types";
 import { backendService } from "../services/backend";
@@ -28,6 +31,22 @@ export function LandingPage({
 }: LandingPageProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [ollamaStatus, setOllamaStatus] = useState<"checking" | "online" | "offline">("checking");
+
+  useEffect(() => {
+    const checkOllama = async () => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch("http://localhost:11434/api/tags", { signal: controller.signal });
+        clearTimeout(timeout);
+        setOllamaStatus(res.ok ? "online" : "offline");
+      } catch {
+        setOllamaStatus("offline");
+      }
+    };
+    checkOllama();
+  }, []);
 
   // File Picker Click
   const handleSelectFolder = async () => {
@@ -93,9 +112,31 @@ export function LandingPage({
         </div>
         
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
-            <span className="h-2 w-2 rounded-full bg-success animate-pulse"></span>
-            <span>Local AI: Qwen2.5-Coder (3B)</span>
+          {/* Privacy badge */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/15 text-[10px] text-primary font-semibold">
+            <Lock className="h-3 w-3" />
+            <span>Your code stays on-device</span>
+          </div>
+          {/* Ollama status */}
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs ${
+            ollamaStatus === "online"
+              ? "bg-success/10 border-success/20 text-success"
+              : ollamaStatus === "offline"
+              ? "bg-white/5 border-white/10 text-gray-400"
+              : "bg-white/5 border-white/10 text-gray-500"
+          }`}>
+            {ollamaStatus === "online" ? (
+              <Wifi className="h-3.5 w-3.5" />
+            ) : ollamaStatus === "offline" ? (
+              <WifiOff className="h-3.5 w-3.5" />
+            ) : (
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+            )}
+            <span>{
+              ollamaStatus === "online" ? "Ollama: Connected" :
+              ollamaStatus === "offline" ? "Ollama: Offline (local engine)" :
+              "Checking Ollama..."
+            }</span>
           </div>
           <a
             href="https://github.com"

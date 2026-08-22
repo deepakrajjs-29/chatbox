@@ -1,0 +1,404 @@
+import { useState } from "react";
+import { Repository, RepositoryInsights, CodebaseUniverse } from "../../types";
+import { backendService } from "../../services/backend";
+import {
+  FileText,
+  Download,
+  Copy,
+  Check,
+  RefreshCw,
+  Loader2,
+  AlertTriangle,
+  Shield,
+  GitBranch,
+  Cpu,
+  BarChart3,
+  Lock,
+  ChevronRight,
+} from "lucide-react";
+
+interface ReportViewProps {
+  repo: Repository;
+  onViewChange?: (view: string) => void;
+}
+
+interface ReportData {
+  insights: RepositoryInsights;
+  universe: CodebaseUniverse;
+  generatedAt: string;
+}
+
+function buildMarkdownReport(repo: Repository, data: ReportData): string {
+  const { insights, universe, generatedAt } = data;
+  const healthScore = Math.round(
+    insights.health_scores.reduce((s, h) => s + h.score, 0) / insights.health_scores.length
+  );
+
+  const criticalFindings = insights.security_findings.filter((f) => f.severity === "HIGH");
+  const lines: string[] = [];
+
+  lines.push(`# Codebase Report: ${repo.name}`);
+  lines.push(`Generated: ${generatedAt} · DevLens AI (Local Analysis)`);
+  lines.push(`Branch: \`${repo.branch}\` · Privacy: 100% Local Processing`);
+  lines.push("");
+  lines.push("---");
+  lines.push("");
+
+  // Executive Summary
+  lines.push("## 📊 Executive Summary");
+  lines.push("");
+  lines.push(`**Codebase Health Score: ${healthScore}/100**`);
+  lines.push("");
+  lines.push(`| Metric | Value |`);
+  lines.push(`|--------|-------|`);
+  lines.push(`| Repository Size | ${(repo.sizeBytes / 1024).toFixed(0)} KB |`);
+  lines.push(`| Total Files | ${repo.fileCount} |`);
+  lines.push(`| Total Folders | ${repo.foldersCount} |`);
+  lines.push(`| Commits | ${repo.commitCount} |`);
+  lines.push(`| Security Findings | ${insights.security_findings.length} |`);
+  lines.push(`| Code Smells | ${insights.code_smells.length} |`);
+  lines.push("");
+
+  // Architecture
+  lines.push("## 🏗️ Architecture");
+  lines.push("");
+  lines.push(`**Style:** ${repo.architectureStyle || "Detected from static analysis"}`);
+  lines.push("");
+  lines.push(`**Frameworks:** ${repo.frameworks.join(", ")}`);
+  lines.push(`**Primary Language:** ${repo.languages[0]?.name || "Unknown"}`);
+  lines.push("");
+  lines.push("**Language Distribution:**");
+  repo.languages.forEach((lang) => {
+    lines.push(`- ${lang.name}: ${lang.percentage.toFixed(1)}%`);
+  });
+  lines.push("");
+
+  // Health Scores
+  lines.push("## ❤️ Health Scores");
+  lines.push("");
+  insights.health_scores.forEach((h) => {
+    const bar = "█".repeat(Math.round(h.score / 10)) + "░".repeat(10 - Math.round(h.score / 10));
+    lines.push(`**${h.category}** — ${h.score}/100`);
+    lines.push(`\`${bar}\``);
+    lines.push(`> ${h.reason}`);
+    lines.push("");
+  });
+
+  // Security
+  lines.push("## 🔒 Security Findings");
+  lines.push("");
+  if (insights.security_findings.length === 0) {
+    lines.push("✅ No security vulnerabilities detected.");
+  } else {
+    insights.security_findings.forEach((finding, idx) => {
+      lines.push(`### ${idx + 1}. ${finding.title}`);
+      lines.push(`- **Severity:** ${finding.severity}`);
+      lines.push(`- **File:** \`${finding.file_path}\``);
+      lines.push(`- **Line:** ${finding.line_number}`);
+      lines.push(`- **Fix:** ${finding.recommendation}`);
+      lines.push("");
+    });
+  }
+
+  // Code Smells
+  lines.push("## 🧹 Code Quality");
+  lines.push("");
+  if (insights.code_smells.length === 0) {
+    lines.push("✅ No significant code smells detected.");
+  } else {
+    insights.code_smells.forEach((smell) => {
+      lines.push(`### ${smell.title}`);
+      lines.push(`- **File:** \`${smell.file_path}\``);
+      lines.push(`- **Lines:** ${smell.lines}`);
+      lines.push(`- ${smell.description}`);
+      lines.push(`- **Fix:** ${smell.recommendation}`);
+      lines.push("");
+    });
+  }
+
+  // Key Modules
+  lines.push("## 📦 Key Modules");
+  lines.push("");
+  universe.nodes.forEach((node) => {
+    lines.push(`### ${node.name}`);
+    lines.push(`- **Type:** ${node.node_type} · **Language:** ${node.language}`);
+    lines.push(`- **Health:** ${node.health}/100 · **Complexity:** ${node.complexity}/100 · **Risk:** ${node.risk}`);
+    lines.push(`- **Owner:** ${node.owner}`);
+    if (node.dependencies.length > 0) {
+      lines.push(`- **Dependencies:** ${node.dependencies.join(", ")}`);
+    }
+    lines.push("");
+  });
+
+  // Recommendations
+  lines.push("## 🎯 Recommended Actions");
+  lines.push("");
+  insights.refactoring_roadmap.forEach((step, idx) => {
+    lines.push(`${idx + 1}. ${step}`);
+  });
+  lines.push("");
+
+  // Critical findings alert
+  if (criticalFindings.length > 0) {
+    lines.push("## ⚠️ Immediate Actions Required");
+    lines.push("");
+    criticalFindings.forEach((f) => {
+      lines.push(`- **[${f.severity}]** ${f.title} in \`${f.file_path}\` — ${f.recommendation}`);
+    });
+    lines.push("");
+  }
+
+  lines.push("---");
+  lines.push("*Report generated by DevLens AI — 100% local, zero data transmitted externally.*");
+
+  return lines.join("\n");
+}
+
+export function ReportView({ repo, onViewChange }: ReportViewProps) {
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generateReport = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const [insights, universe] = await Promise.all([
+        backendService.getRepositoryInsights(repo.path),
+        backendService.generateCodeUniverse(repo.path),
+      ]);
+      setReportData({
+        insights,
+        universe,
+        generatedAt: new Date().toLocaleString(),
+      });
+    } catch (err) {
+      setError("Failed to generate report. Please try again.");
+      console.error(err);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const markdownReport = reportData ? buildMarkdownReport(repo, reportData) : "";
+
+  const copyReport = () => {
+    navigator.clipboard.writeText(markdownReport);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const downloadReport = () => {
+    const blob = new Blob([markdownReport], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `devlens-report-${repo.name}-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const healthScore = reportData
+    ? Math.round(
+        reportData.insights.health_scores.reduce((s, h) => s + h.score, 0) /
+          reportData.insights.health_scores.length
+      )
+    : null;
+
+  const healthColor = healthScore
+    ? healthScore >= 90
+      ? "text-success"
+      : healthScore >= 75
+      ? "text-primary"
+      : healthScore >= 55
+      ? "text-warning"
+      : "text-danger"
+    : "text-gray-500";
+
+  return (
+    <div className="h-full flex flex-col animate-fade-in space-y-4">
+
+      {/* Header */}
+      <div className="flex items-center justify-between shrink-0">
+        <div>
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Codebase Report
+          </h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            One-click comprehensive analysis report for {repo.name}.
+          </p>
+        </div>
+
+        {reportData && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={generateReport}
+              disabled={generating}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 hover:text-white transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+            <button
+              onClick={copyReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 hover:text-white transition-all"
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied!" : "Copy Markdown"}
+            </button>
+            <button
+              onClick={downloadReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-xs text-white font-semibold transition-all shadow-lg shadow-primary/20"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download .md
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!reportData && !generating ? (
+        /* Generate Prompt */
+        <div className="flex-1 flex flex-col items-center justify-center space-y-6 py-16">
+          <div className="h-20 w-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <FileText className="h-10 w-10 text-primary" />
+          </div>
+          <div className="text-center space-y-2 max-w-md">
+            <h3 className="text-lg font-bold text-white">Generate Codebase Report</h3>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              Get a comprehensive analysis report covering architecture, security findings, code health,
+              complexity hotspots, and AI-powered recommendations — all processed locally.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 text-center max-w-lg">
+            {[
+              { icon: BarChart3, label: "Health Score", desc: "6-dimension scoring" },
+              { icon: Shield, label: "Security Audit", desc: "SAST findings" },
+              { icon: GitBranch, label: "Git Analysis", desc: "Ownership & risk" },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="glass-panel p-4 rounded-2xl border border-white/5 bg-white/[0.01] space-y-2">
+                <Icon className="h-5 w-5 text-primary mx-auto" />
+                <div className="text-xs font-bold text-white">{label}</div>
+                <div className="text-[10px] text-gray-500">{desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-xs text-danger">
+              <AlertTriangle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={generateReport}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-xl shadow-primary/25 transition-all active:scale-[0.97]"
+          >
+            <Cpu className="h-4 w-4" />
+            Generate Report
+          </button>
+
+          <p className="text-[10px] text-gray-600 flex items-center gap-1">
+            <Lock className="h-3 w-3" />
+            All analysis runs locally — no code leaves your device
+          </p>
+        </div>
+      ) : generating ? (
+        /* Loading */
+        <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <div className="text-center space-y-1">
+            <p className="text-sm font-bold text-white">Generating Report...</p>
+            <p className="text-xs text-gray-500">Running security scan, health analysis, and code universe mapping</p>
+          </div>
+          <div className="space-y-2 text-xs text-gray-500 font-mono">
+            {["Analyzing security...", "Computing health scores...", "Mapping code universe...", "Compiling recommendations..."].map((step, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${idx * 200}ms` }} />
+                {step}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : reportData ? (
+        /* Report Display */
+        <div className="flex-1 min-h-0 grid md:grid-cols-4 gap-4">
+
+          {/* Left: Key Metrics Summary */}
+          <div className="md:col-span-1 space-y-3 overflow-y-auto">
+
+            {/* Health Score */}
+            <div className="glass-panel p-4 rounded-2xl border border-white/5 bg-white/[0.01] text-center space-y-1">
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Health Score</div>
+              <div className={`text-4xl font-extrabold ${healthColor}`}>{healthScore}</div>
+              <div className="text-[10px] text-gray-500">/100</div>
+            </div>
+
+            {/* Security */}
+            <div className="glass-panel p-4 rounded-2xl border border-white/5 bg-white/[0.01] space-y-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+                <Shield className="h-3 w-3 text-danger" /> Security
+              </div>
+              <div className="space-y-1.5">
+                {[
+                  { label: "High/Critical", count: reportData.insights.security_findings.filter(f => f.severity === "HIGH").length, color: "text-danger" },
+                  { label: "Medium", count: reportData.insights.security_findings.filter(f => f.severity === "MEDIUM").length, color: "text-warning" },
+                  { label: "Code Smells", count: reportData.insights.code_smells.length, color: "text-accent" },
+                ].map(({ label, count, color }) => (
+                  <div key={label} className="flex items-center justify-between text-[10px]">
+                    <span className="text-gray-500">{label}</span>
+                    <span className={`font-bold ${count > 0 ? color : "text-gray-600"}`}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Nav */}
+            <div className="glass-panel p-4 rounded-2xl border border-white/5 bg-white/[0.01] space-y-2">
+              <div className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">Explore</div>
+              {[
+                { label: "Security Scanner", view: "security" },
+                { label: "Code Universe", view: "universe" },
+                { label: "AI Insights", view: "insights" },
+                { label: "AI Chat", view: "chat" },
+              ].map(({ label, view }) => (
+                <button
+                  key={view}
+                  onClick={() => onViewChange?.(view)}
+                  className="w-full text-left text-[10px] text-gray-400 hover:text-primary transition-colors flex items-center gap-1.5"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[9px] text-gray-600 text-center">
+              Generated {reportData.generatedAt}
+            </p>
+          </div>
+
+          {/* Right: Markdown Report */}
+          <div className="md:col-span-3 glass-panel rounded-2xl border border-white/5 bg-[#0A0A0A] overflow-hidden flex flex-col min-h-0">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 bg-white/[0.02] shrink-0">
+              <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+                <FileText className="h-3.5 w-3.5 text-primary" />
+                devlens-report-{repo.name}.md
+              </div>
+              <span className="text-[9px] text-gray-600 font-semibold">Markdown Preview</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 min-h-0">
+              <pre className="text-[11px] font-mono text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
+                {markdownReport}
+              </pre>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
